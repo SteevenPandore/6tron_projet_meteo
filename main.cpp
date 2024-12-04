@@ -24,6 +24,7 @@ using namespace sixtron;
 
 namespace {
 #define GROUP_NAME                 "Souste"
+#define MQTT_TOPIC_PUBLISH    "Steeven/Dashboards/station_meteo"
 #define MQTT_TOPIC_PUBLISH_TEMP    "Steeven/feeds/temperature"
 #define MQTT_TOPIC_PUBLISH_HUM     "Steeven/feeds/humidite"
 #define MQTT_TOPIC_PUBLISH_PRESS   "Steeven/feeds/pression"
@@ -110,24 +111,61 @@ static int8_t publish() {
 
     // Lire la température depuis le capteur
     float temperature = sensor.temperature();
-
-    char mqttPayload[50];
-    sprintf(mqttPayload, "%.2f", temperature); // Convertir la température en chaîne de caractères
+    char mqttPayloadTemp[50];
+    sprintf(mqttPayloadTemp, "%.2f", temperature); // Convertir la température en chaîne de caractères
  
+    MQTT::Message messageTemp;
+    messageTemp.qos = MQTT::QOS1;
+    messageTemp.retained = false;
+    messageTemp.dup = false;
+    messageTemp.payload = (void*)mqttPayloadTemp;
+    messageTemp.payloadlen = strlen(mqttPayloadTemp);
  
-    MQTT::Message message;
-    message.qos = MQTT::QOS1;
-    message.retained = false;
-    message.dup = false;
-    message.payload = (void*)mqttPayload;
-    message.payloadlen = strlen(mqttPayload);
- 
-    printf("Send: %s to MQTT Broker: %s\n", mqttPayload, hostname);
-    rc = client->publish(MQTT_TOPIC_PUBLISH_TEMP, message);
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayloadTemp, hostname);
+    rc = client->publish(MQTT_TOPIC_PUBLISH_TEMP, messageTemp);
     if (rc != 0) {
         printf("Failed to publish: %d\n", rc);
         return rc;
     }
+
+    // Lire la pression depuis le capteur
+    float pression = sensor.pressure();
+    char mqttPayloadPress[50];
+    sprintf(mqttPayloadPress, "%.2f", pression); // Convertir la pression en chaîne de caractères
+ 
+    MQTT::Message messagePress;
+    messagePress.qos = MQTT::QOS1;
+    messagePress.retained = false;
+    messagePress.dup = false;
+    messagePress.payload = (void*)mqttPayloadPress;
+    messagePress.payloadlen = strlen(mqttPayloadPress);
+ 
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayloadPress, hostname);
+    rc = client->publish(MQTT_TOPIC_PUBLISH_PRESS, messagePress);
+    if (rc != 0) {
+        printf("Failed to publish: %d\n", rc);
+        return rc;
+    }
+
+    // Lire l'humidité depuis le capteur
+    float humidite = sensor.humidity();
+    char mqttPayloadHum[50];
+    sprintf(mqttPayloadHum, "%.2f", humidite); // Convertir l'humidité en chaîne de caractères
+ 
+    MQTT::Message messageHum;
+    messageHum.qos = MQTT::QOS1;
+    messageHum.retained = false;
+    messageHum.dup = false;
+    messageHum.payload = (void*)mqttPayloadHum;
+    messageHum.payloadlen = strlen(mqttPayloadHum);
+ 
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayloadHum, hostname);
+    rc = client->publish(MQTT_TOPIC_PUBLISH_HUM, messageHum);
+    if (rc != 0) {
+        printf("Failed to publish: %d\n", rc);
+        return rc;
+    }
+
     return 0;
 }
  
