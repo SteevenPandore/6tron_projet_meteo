@@ -37,6 +37,7 @@ BME280 sensor(&i2c1, BME280::I2CAddress::Address1);
 // Peripherals :
 static DigitalOut led(LED1);
 static InterruptIn button(BUTTON1);
+Ticker tempTicker;
  
 // Network
 NetworkInterface *network;
@@ -209,6 +210,9 @@ int main()
  
     // Publish
     button.fall(main_queue.event(publish));
+
+    // Attacher la fonction publish() au Ticker pour une exécution toutes les 3 secondes
+    tempTicker.attach(main_queue.event(publish), 10s);
  
     main_queue.dispatch_forever();
 }
