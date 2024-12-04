@@ -1,1 +1,1 @@
-#define ADAFRUITKEY "aio_INRa93jBXA8CkllFq7WqPqLoTE4l"
+#define ADAFRUITKEY "aio_xXHi72LhdBaodNBtd3QK8vqz6Mf5"

@@ -28,7 +28,8 @@ namespace {
 #define MQTT_TOPIC_PUBLISH_TEMP    "Steeven/feeds/temperature"
 #define MQTT_TOPIC_PUBLISH_HUM     "Steeven/feeds/humidite"
 #define MQTT_TOPIC_PUBLISH_PRESS   "Steeven/feeds/pression"
-#define MQTT_TOPIC_SUBSCRIBE       "Steeven/feeds/led"
+#define MQTT_TOPIC_SUBSCRIBE_LED       "Steeven/feeds/led"
+#define MQTT_TOPIC_SUBSCRIBE_ALER       "Steeven/feeds/alerte"
 #define SYNC_INTERVAL           1
 #define MQTT_CLIENT_ID          "6LoWPAN_Node_"GROUP_NAME
 }
@@ -40,6 +41,7 @@ BME280 sensor(&i2c1, BME280::I2CAddress::Address1);
 static DigitalOut led(LED1);
 static InterruptIn button(BUTTON1);
 Ticker tempTicker;
+Ticker ledTicker;
  
 // Network
 NetworkInterface *network;
@@ -61,6 +63,14 @@ static EventQueue main_queue(32 * EVENTS_EVENT_SIZE);
  *
  *  Print messages received on mqtt topic
  */
+
+// Fonction pour faire clignoter la LED
+
+void toggle_led() {
+    led = !led;
+}
+
+
 void messageArrived(MQTT::MessageData& md)
 {
     MQTT::Message &message = md.message;
@@ -82,6 +92,27 @@ void messageArrived(MQTT::MessageData& md)
     else if (strcmp(char_payload, "RESET") == 0) {
         printf("RESETTING ...\n");
         system_reset();
+    }
+}
+
+void messageAler(MQTT::MessageData& md)
+{
+    MQTT::Message &message = md.message;
+    printf("Message arrived: qos %d, retained %d, dup %d, packetid %d\r\n", message.qos, message.retained, message.dup, message.id);
+    printf("Payload %.*s\r\n", message.payloadlen, (char*)message.payload);
+ 
+    // Get the payload string
+    char* char_payload = (char*)malloc((message.payloadlen+1)*sizeof(char)); // allocate the necessary size for our buffer
+    char_payload = (char *) message.payload; // get the arrived payload in our buffer
+    char_payload[message.payloadlen] = '\0'; // String must be null terminated
+
+    // Modifier la condition pour gérer la valeur reçue
+    if (strcmp(char_payload, "1") == 0) {
+        ledTicker.attach(toggle_led, 500ms); // Clignote toutes les 0.5 secondes
+    } 
+    else if (strcmp(char_payload, "0") == 0) {
+        ledTicker.detach(); // Arrêter le clignotement
+        led = 0;            // Éteindre la LED
     }
 }
  
@@ -237,10 +268,17 @@ int main()
     printf("Connected to MQTT broker\n");
  
     /* MQTT Subscribe */
-    if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE, MQTT::QOS0, messageArrived)) != 0){
+    if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE_LED, MQTT::QOS0, messageArrived)) != 0){
         printf("rc from MQTT subscribe is %d\r\n", rc);
     }
-    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE);
+    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE_LED);
+ 
+    yield();
+
+    if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE_ALER, MQTT::QOS0, messageAler)) != 0){
+        printf("rc from MQTT subscribe is %d\r\n", rc);
+    }
+    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE_ALER);
  
     yield();
  
