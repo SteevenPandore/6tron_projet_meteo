@@ -106,11 +106,6 @@ static void yield(){
  */
 static int8_t publish() {
 
-    if (!sensor.initialize()) {
-        printf("BME280 init error!\n");
-    }
-    sensor.set_sampling();
-
     // Lire la température depuis le capteur
     float temperature = sensor.temperature();
 
@@ -139,6 +134,11 @@ static int8_t publish() {
  
 int main()
 {
+    if (!sensor.initialize()) {
+        printf("BME280 init error!\n");
+    }
+    sensor.set_sampling();
+
     printf("Connecting to border router...\n");
  
     /* Get Network configuration */
@@ -188,7 +188,7 @@ int main()
     data.keepAliveInterval = 25;
     // data.clientID.cstring = MQTT_CLIENT_ID; // À SUPPRIMER
     data.username.cstring = "Steeven";
-    data.password.cstring = "aio_kjYH00Iaza0q6yV3YKQJoKcPMLwg";
+    data.password.cstring = "aio_KgeJ69JJBGOGKAGtZi5iXosoh0ib";
  
     if (client->connect(data) != 0){
         printf("Connection to MQTT Broker Failed\n");
