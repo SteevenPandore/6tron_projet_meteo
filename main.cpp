@@ -19,9 +19,9 @@
 #include <MQTTClientMbedOs.h>
 
 namespace {
-#define GROUP_NAME            "ABCD"
-#define MQTT_TOPIC_PUBLISH      "/estia/"GROUP_NAME"/uplink"
-#define MQTT_TOPIC_SUBSCRIBE    "/estia/"GROUP_NAME"/downlink"
+#define GROUP_NAME            "Souste"
+#define MQTT_TOPIC_PUBLISH      "/estia/"Gormiteam"
+#define MQTT_TOPIC_SUBSCRIBE    "/estia/"Souste"
 #define SYNC_INTERVAL           1
 #define MQTT_CLIENT_ID          "6LoWPAN_Node_"GROUP_NAME
 }
@@ -35,7 +35,7 @@ NetworkInterface *network;
 MQTTClient *client;
 
 // MQTT
-const char* hostname = "test.mosquitto.org";
+const char* hostname = "io.adafruit.com";
 int port = 1883;
 
 // Error code
@@ -98,7 +98,7 @@ static void yield(){
  */
 static int8_t publish() {
 
-    char *mqttPayload = "Hello from 6TRON";
+    char *mqttPayload = "TEST";
 
     MQTT::Message message;
     message.qos = MQTT::QOS1;
@@ -168,7 +168,9 @@ int main()
     MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
     data.MQTTVersion = 4;
     data.keepAliveInterval = 25;
-    data.clientID.cstring = MQTT_CLIENT_ID;
+    //data.clientID.cstring = MQTT_CLIENT_ID;
+    data.username.cstring = "votre-id";
+    data.password.cstring = "votre-clé-adafruit-io";
     if (client->connect(data) != 0){
         printf("Connection to MQTT Broker Failed\n");
     }
