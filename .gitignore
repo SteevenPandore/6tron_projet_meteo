@@ -5,3 +5,4 @@ projectfiles
 
 # Do NOT ignore files below
 !dist/program.py
+key.h

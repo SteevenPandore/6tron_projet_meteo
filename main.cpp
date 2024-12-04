@@ -18,6 +18,7 @@
 #include <nsapi_dns.h>
 #include <MQTTClientMbedOs.h>
 #include "bme280.h"
+#include "Key.h"
 
 using namespace sixtron;
 
@@ -189,7 +190,7 @@ int main()
     data.keepAliveInterval = 25;
     // data.clientID.cstring = MQTT_CLIENT_ID; // À SUPPRIMER
     data.username.cstring = "Steeven";
-    data.password.cstring = "aio_KgeJ69JJBGOGKAGtZi5iXosoh0ib";
+    data.password.cstring = ADAFRUITKEY;
  
     if (client->connect(data) != 0){
         printf("Connection to MQTT Broker Failed\n");
