@@ -17,34 +17,42 @@
 #include "mbed.h"
 #include <nsapi_dns.h>
 #include <MQTTClientMbedOs.h>
+#include "bme280.h"
+
+using namespace sixtron;
 
 namespace {
-#define GROUP_NAME            "Souste"
-#define MQTT_TOPIC_PUBLISH      "/estia/"Gormiteam"
-#define MQTT_TOPIC_SUBSCRIBE    "/estia/"Souste"
+#define GROUP_NAME                 "Souste"
+#define MQTT_TOPIC_PUBLISH_TEMP    "Steeven/feeds/temperature"
+#define MQTT_TOPIC_PUBLISH_HUM     "Steeven/feeds/humidite"
+#define MQTT_TOPIC_PUBLISH_PRESS   "Steeven/feeds/pression"
+#define MQTT_TOPIC_SUBSCRIBE       "Steeven/feeds/led"
 #define SYNC_INTERVAL           1
 #define MQTT_CLIENT_ID          "6LoWPAN_Node_"GROUP_NAME
 }
 
-// Peripherals
+I2C i2c1(I2C1_SDA, I2C1_SCL);
+BME280 sensor(&i2c1, BME280::I2CAddress::Address1);
+
+// Peripherals :
 static DigitalOut led(LED1);
 static InterruptIn button(BUTTON1);
-
+ 
 // Network
 NetworkInterface *network;
 MQTTClient *client;
-
+ 
 // MQTT
 const char* hostname = "io.adafruit.com";
 int port = 1883;
-
+ 
 // Error code
 nsapi_size_or_error_t rc = 0;
-
+ 
 // Event queue
 static int id_yield;
 static EventQueue main_queue(32 * EVENTS_EVENT_SIZE);
-
+ 
 /*!
  *  \brief Called when a message is received
  *
@@ -55,12 +63,12 @@ void messageArrived(MQTT::MessageData& md)
     MQTT::Message &message = md.message;
     printf("Message arrived: qos %d, retained %d, dup %d, packetid %d\r\n", message.qos, message.retained, message.dup, message.id);
     printf("Payload %.*s\r\n", message.payloadlen, (char*)message.payload);
-
+ 
     // Get the payload string
     char* char_payload = (char*)malloc((message.payloadlen+1)*sizeof(char)); // allocate the necessary size for our buffer
     char_payload = (char *) message.payload; // get the arrived payload in our buffer
     char_payload[message.payloadlen] = '\0'; // String must be null terminated
-
+ 
     // Compare our payload with known command strings
     if (strcmp(char_payload, "ON") == 0) {
         led = 1;
@@ -73,7 +81,7 @@ void messageArrived(MQTT::MessageData& md)
         system_reset();
     }
 }
-
+ 
 /*!
  *  \brief Yield to the MQTT client
  *
@@ -81,9 +89,9 @@ void messageArrived(MQTT::MessageData& md)
  */
 static void yield(){
     // printf("Yield\n");
-    
+   
     rc = client->yield(100);
-
+ 
     if (rc != 0){
         printf("Yield error: %d\n", rc);
         main_queue.cancel(id_yield);
@@ -91,71 +99,81 @@ static void yield(){
         system_reset();
     }
 }
-
+ 
 /*!
  *  \brief Publish data over the corresponding adafruit MQTT topic
  *
  */
 static int8_t publish() {
 
-    char *mqttPayload = "TEST";
+    if (!sensor.initialize()) {
+        printf("BME280 init error!\n");
+    }
+    sensor.set_sampling();
 
+    // Lire la température depuis le capteur
+    float temperature = sensor.temperature();
+
+    char mqttPayload[50];
+    sprintf(mqttPayload, "%.2f", temperature); // Convertir la température en chaîne de caractères
+ 
+ 
     MQTT::Message message;
     message.qos = MQTT::QOS1;
     message.retained = false;
     message.dup = false;
     message.payload = (void*)mqttPayload;
     message.payloadlen = strlen(mqttPayload);
-
+ 
     printf("Send: %s to MQTT Broker: %s\n", mqttPayload, hostname);
-    rc = client->publish(MQTT_TOPIC_PUBLISH, message);
+    rc = client->publish(MQTT_TOPIC_PUBLISH_TEMP, message);
     if (rc != 0) {
         printf("Failed to publish: %d\n", rc);
         return rc;
     }
     return 0;
 }
-
+ 
 // main() runs in its own thread in the OS
 // (note the calls to ThisThread::sleep_for below for delays)
-
+ 
 int main()
 {
     printf("Connecting to border router...\n");
-
+ 
     /* Get Network configuration */
     network = NetworkInterface::get_default_instance();
-
+ 
     if (!network) {
         printf("Error! No network interface found.\n");
         return 0;
     }
-
+ 
     /* Add DNS */
     nsapi_addr_t new_dns = {
         NSAPI_IPv6,
         { 0xfd, 0x9f, 0x59, 0x0a, 0xb1, 0x58, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x01 }
     };
     nsapi_dns_add_server(new_dns, "LOWPAN");
-
+ 
     /* Border Router connection */
     rc = network->connect();
     if (rc != 0) {
         printf("Error! net->connect() returned: %d\n", rc);
         return rc;
     }
-
+ 
     /* Print IP address */
     SocketAddress a;
     network->get_ip_address(&a);
     printf("IP address: %s\n", a.get_ip_address() ? a.get_ip_address() : "None");
-
+ 
     /* Open TCP Socket */
     TCPSocket socket;
     SocketAddress address;
     network->gethostbyname(hostname, &address);
     address.set_port(port);
-
+ 
     /* MQTT Connection */
     client = new MQTTClient(&socket);
     socket.open(network);
@@ -164,32 +182,33 @@ int main()
         printf("Connection to MQTT broker Failed\n");
         return rc;
     }
-
+ 
     MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
     data.MQTTVersion = 4;
     data.keepAliveInterval = 25;
-    //data.clientID.cstring = MQTT_CLIENT_ID;
-    data.username.cstring = "votre-id";
-    data.password.cstring = "votre-clé-adafruit-io";
+    // data.clientID.cstring = MQTT_CLIENT_ID; // À SUPPRIMER
+    data.username.cstring = "Steeven";
+    data.password.cstring = "aio_kjYH00Iaza0q6yV3YKQJoKcPMLwg";
+ 
     if (client->connect(data) != 0){
         printf("Connection to MQTT Broker Failed\n");
     }
-
+ 
     printf("Connected to MQTT broker\n");
-
+ 
     /* MQTT Subscribe */
     if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE, MQTT::QOS0, messageArrived)) != 0){
         printf("rc from MQTT subscribe is %d\r\n", rc);
     }
     printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE);
-
+ 
     yield();
-
+ 
     // Yield every 1 second
     id_yield = main_queue.call_every(SYNC_INTERVAL * 1000, yield);
-
+ 
     // Publish
     button.fall(main_queue.event(publish));
-
+ 
     main_queue.dispatch_forever();
 }
